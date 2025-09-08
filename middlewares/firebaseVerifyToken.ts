@@ -1,19 +1,26 @@
+// src/middleware/userLogin.ts
 import type { Request, Response, NextFunction } from "express";
-import { auth, db } from "../firebase.ts"; 
+import { auth, db } from "../firebase.ts";
 import type { DecodedIdToken } from "firebase-admin/auth";
+import ExpressError from "../utils/expressError.ts";
 
+// Extend Express Request type to include `user`
 declare module "express-serve-static-core" {
   interface Request {
     user?: DecodedIdToken;
   }
 }
 
-export const userLogin = async (req: Request, res: Response, next: NextFunction) => {
-  const headers = req.headers.authorization;
-  const token = headers?.startsWith("Bearer ") ? headers.split(" ")[1] : null;
+export const userLogin = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
 
   if (!token) {
-    return res.status(401).json({ error: "Unauthorized: No token provided" });
+    return next(new ExpressError(401, "No token provided. Please log in."));
   }
 
   try {
@@ -25,20 +32,24 @@ export const userLogin = async (req: Request, res: Response, next: NextFunction)
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      // create new user
+      // Auto-create user document in Firestore
       await userRef.set({
-        userId: decodedToken.uid,
+        id: decodedToken.uid,
         email: decodedToken.email || "",
-        name: decodedToken.name || "",
-        registrations: [],
+        fullName: "", // optional, will update in completeProfile
+        role: "user",
+        team_id: "",
+        events_registered: [],
+        paid: false,
         createdAt: new Date(),
+        updatedAt: new Date(),
       });
-      console.log(`✅ New user ${decodedToken.uid} created in Firestore`);
+      console.log(`Firestore user created for UID: ${decodedToken.uid}`);
     }
 
     next();
-  } catch (error: unknown) {
-    console.error("❌ Firebase Token verification failed:", error);
-    return res.status(403).json({ error: "Invalid or expired token. Please log in again." });
+  } catch (error) {
+    console.error("Firebase Auth Error:", error);
+    return next(new ExpressError(401, "Invalid or expired token."));
   }
 };

@@ -22,7 +22,6 @@ app.use(express.urlencoded({ extended: true }));
 // API Routes
 app.use("/api/razorpay", razorpayRoutes);
 app.use("/api/events", eventRoutes);
-app.use("/api/user", userRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/requests", requestRouter);
 app.use("/api/registration", registrationRouter);
@@ -31,6 +30,6 @@ app.get("/", (_req, res) => {
   res.send("Hello from TypeScript + Node.js");
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at port ${process.env.PORT}`);
+app.listen(3000, () => {
+  console.log(`Server running at port 3000`);
 });
